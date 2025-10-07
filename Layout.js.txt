@@ -1,0 +1,144 @@
+import React, { useState, useEffect } from "react";
+import { Link, useLocation } from "react-router-dom";
+import { createPageUrl } from "@/utils";
+import { User as UserIcon, Moon, Sun, Globe } from "lucide-react";
+import { User } from "@/entities/User";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+const translations = {
+  hindi: { appName: "सुरक्षित यात्रा", profile: "प्रोफ़ाइल" },
+  english: { appName: "Safe Yatra", profile: "Profile" },
+  marathi: { appName: "सुरक्षित यात्रा", profile: "प्रोफाइल" },
+  bengali: { appName: "নিরাপদ যাত্রা", profile: "প্রোফাইল" },
+  tamil: { appName: "பாதுகாப்பான பயணம்", profile: "சுயவிவரம்" }
+};
+
+export default function Layout({ children, currentPageName }) {
+  const [user, setUser] = useState(null);
+  const [darkMode, setDarkMode] = useState(false);
+  const location = useLocation();
+  const hideHeader = currentPageName === "LanguageSelection";
+
+  useEffect(() => {
+    loadUser();
+  }, []);
+
+  const loadUser = async () => {
+    try {
+      const userData = await User.me();
+      setUser(userData);
+      setDarkMode(userData.dark_mode || false);
+    } catch (error) {
+      console.log("User not loaded");
+    }
+  };
+
+  const toggleDarkMode = async () => {
+    const newMode = !darkMode;
+    setDarkMode(newMode);
+    if (user) {
+      await User.updateMyUserData({ dark_mode: newMode });
+    }
+  };
+
+  const lang = user?.preferred_language || "hindi";
+  const t = translations[lang];
+
+  return (
+    <div className={`min-h-screen transition-colors duration-300 ${darkMode ? 'bg-black text-white' : 'bg-gray-50 text-gray-900'}`}>
+      <style>
+        {darkMode ? `
+          :root {
+            --background: 0 0% 0%;
+            --foreground: 0 0% 100%;
+            --card: 0 0% 10%;
+            --card-foreground: 0 0% 100%;
+            --popover: 0 0% 10%;
+            --popover-foreground: 0 0% 100%;
+            --primary: 210 100% 50%;
+            --primary-foreground: 0 0% 100%;
+            --secondary: 0 0% 20%;
+            --secondary-foreground: 0 0% 100%;
+            --muted: 0 0% 20%;
+            --muted-foreground: 0 0% 70%;
+            --accent: 0 0% 20%;
+            --accent-foreground: 0 0% 100%;
+            --border: 0 0% 20%;
+            --input: 0 0% 20%;
+            --ring: 210 100% 50%;
+          }
+        ` : `
+          :root {
+            --background: 0 0% 100%;
+            --foreground: 222.2 84% 4.9%;
+            --card: 0 0% 100%;
+            --card-foreground: 222.2 84% 4.9%;
+            --primary: 210 100% 50%;
+            --primary-foreground: 0 0% 100%;
+          }
+        `}
+      </style>
+
+      {!hideHeader && (
+        <header className={`sticky top-0 z-50 border-b transition-colors duration-300 ${
+          darkMode ? 'bg-black border-gray-800' : 'bg-white border-gray-200'
+        }`}>
+          <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+            <Link to={createPageUrl("Home")} className="flex items-center gap-2">
+              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                darkMode ? 'bg-blue-600' : 'bg-blue-500'
+              }`}>
+                <Globe className="w-6 h-6 text-white" />
+              </div>
+              <span className="text-xl font-bold">{t?.appName}</span>
+            </Link>
+
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={toggleDarkMode}
+                className={darkMode ? 'text-white hover:bg-gray-800' : ''}
+              >
+                {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+              </Button>
+
+              {user && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className={darkMode ? 'text-white hover:bg-gray-800' : ''}>
+                      <UserIcon className="w-5 h-5" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className={darkMode ? 'bg-gray-900 border-gray-800' : ''}>
+                    <DropdownMenuItem asChild>
+                      <Link to={createPageUrl("ProfileSetup")} className={darkMode ? 'text-white' : ''}>
+                        {t?.profile}
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      onClick={() => User.logout()}
+                      className={darkMode ? 'text-white' : ''}
+                    >
+                      Logout
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+            </div>
+          </div>
+        </header>
+      )}
+
+      <main className="w-full">
+        {children}
+      </main>
+    </div>
+  );
+}

@@ -1,0 +1,55 @@
+{
+  "name": "Ride",
+  "type": "object",
+  "properties": {
+    "source": {
+      "type": "string",
+      "description": "Starting location"
+    },
+    "destination": {
+      "type": "string",
+      "description": "End location"
+    },
+    "route_preference": {
+      "type": "string",
+      "enum": [
+        "fastest",
+        "comfortable",
+        "fitness",
+        "quiet"
+      ],
+      "description": "Type of route selected"
+    },
+    "route_details": {
+      "type": "object",
+      "description": "Route information and segments"
+    },
+    "ticket_price": {
+      "type": "number",
+      "description": "Total ticket price"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "planned",
+        "active",
+        "completed",
+        "cancelled"
+      ],
+      "default": "planned"
+    },
+    "start_time": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "end_time": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "source",
+    "destination",
+    "route_preference"
+  ]
+}

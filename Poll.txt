@@ -1,0 +1,60 @@
+{
+  "name": "Poll",
+  "type": "object",
+  "properties": {
+    "ride_id": {
+      "type": "string",
+      "description": "Associated ride ID"
+    },
+    "concern_type": {
+      "type": "string",
+      "enum": [
+        "eve_teasing",
+        "fighting",
+        "abusing",
+        "drunk_driver",
+        "custom"
+      ],
+      "description": "Type of safety concern"
+    },
+    "custom_concern": {
+      "type": "string",
+      "description": "Custom concern description"
+    },
+    "custom_poll_question": {
+      "type": "string",
+      "description": "Custom poll question"
+    },
+    "custom_poll_options": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Custom poll answer options"
+    },
+    "location": {
+      "type": "string",
+      "description": "GPS location of concern"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "bus_id": {
+      "type": "string",
+      "description": "Bus or vehicle identifier"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "resolved",
+        "dismissed"
+      ],
+      "default": "active"
+    }
+  },
+  "required": [
+    "concern_type"
+  ]
+}

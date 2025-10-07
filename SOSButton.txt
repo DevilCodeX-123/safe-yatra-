@@ -1,0 +1,151 @@
+import React, { useState } from "react";
+import { EmergencyAlert } from "@/entities/EmergencyAlert";
+import { User } from "@/entities/User";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { AlertTriangle, Phone, Shield } from "lucide-react";
+import { motion } from "framer-motion";
+
+const translations = {
+  hindi: {
+    sos: "SOS",
+    emergency: "आपातकाल",
+    confirmMsg: "क्या आप आपातकालीन सहायता के लिए कॉल करना चाहते हैं?",
+    police: "पुलिस (100)",
+    cancel: "रद्द करें",
+    alertSent: "आपातकालीन अलर्ट भेज दिया गया है!"
+  },
+  english: {
+    sos: "SOS",
+    emergency: "Emergency",
+    confirmMsg: "Do you want to call for emergency assistance?",
+    police: "Police (100)",
+    cancel: "Cancel",
+    alertSent: "Emergency alert sent!"
+  },
+  marathi: {
+    sos: "SOS",
+    emergency: "आणीबाणी",
+    confirmMsg: "तुम्हाला आणीबाणी मदतीसाठी कॉल करायचा आहे का?",
+    police: "पोलीस (100)",
+    cancel: "रद्द करा",
+    alertSent: "आणीबाणी अलर्ट पाठवला!"
+  },
+  bengali: {
+    sos: "SOS",
+    emergency: "জরুরি অবস্থা",
+    confirmMsg: "আপনি কি জরুরি সহায়তার জন্য কল করতে চান?",
+    police: "পুলিশ (100)",
+    cancel: "বাতিল করুন",
+    alertSent: "জরুরি সতর্কতা পাঠানো হয়েছে!"
+  },
+  tamil: {
+    sos: "SOS",
+    emergency: "அவசரநிலை",
+    confirmMsg: "அவசர உதவிக்கு அழைக்க விரும்புகிறீர்களா?",
+    police: "காவல்துறை (100)",
+    cancel: "ரத்துசெய்",
+    alertSent: "அவசர எச்சரிக்கை அனுப்பப்பட்டது!"
+  }
+};
+
+export default function SOSButton({ rideId, darkMode, lang }) {
+  const [showDialog, setShowDialog] = useState(false);
+  const [alertSent, setAlertSent] = useState(false);
+
+  const t = translations[lang] || translations.hindi;
+
+  const handleSOS = async () => {
+    try {
+      const user = await User.me();
+      
+      await EmergencyAlert.create({
+        user_name: user.full_name,
+        user_phone: user.phone || "",
+        location: "Current Location",
+        ride_id: rideId,
+        alert_type: "sos",
+        timestamp: new Date().toISOString(),
+        status: "active"
+      });
+
+      setAlertSent(true);
+      setTimeout(() => {
+        setShowDialog(false);
+        setAlertSent(false);
+      }, 2000);
+    } catch (error) {
+      console.error("Error sending SOS:", error);
+    }
+  };
+
+  return (
+    <>
+      <motion.div
+        initial={{ scale: 0 }}
+        animate={{ scale: 1 }}
+        transition={{ delay: 0.5 }}
+        className="absolute top-4 right-4 z-10"
+      >
+        <Button
+          onClick={() => setShowDialog(true)}
+          className={`w-16 h-16 rounded-full shadow-2xl ${
+            darkMode 
+              ? 'bg-red-600 hover:bg-red-700' 
+              : 'bg-red-500 hover:bg-red-600'
+          } text-white font-bold text-lg animate-pulse`}
+        >
+          {t.sos}
+        </Button>
+      </motion.div>
+
+      <Dialog open={showDialog} onOpenChange={setShowDialog}>
+        <DialogContent className={darkMode ? 'bg-gray-900 border-gray-800' : ''}>
+          <DialogHeader>
+            <DialogTitle className={`flex items-center gap-2 text-red-600`}>
+              <AlertTriangle className="w-6 h-6" />
+              {t.emergency}
+            </DialogTitle>
+            <DialogDescription className={darkMode ? 'text-gray-400' : ''}>
+              {alertSent ? t.alertSent : t.confirmMsg}
+            </DialogDescription>
+          </DialogHeader>
+
+          {!alertSent && (
+            <div className="grid gap-3">
+              <Button
+                onClick={handleSOS}
+                className="h-14 bg-red-600 hover:bg-red-700 text-white font-semibold"
+              >
+                <Phone className="w-5 h-5 mr-2" />
+                {t.police}
+              </Button>
+              <Button
+                onClick={() => setShowDialog(false)}
+                variant="outline"
+                className={darkMode ? 'border-gray-700 text-white hover:bg-gray-800' : ''}
+              >
+                {t.cancel}
+              </Button>
+            </div>
+          )}
+
+          {alertSent && (
+            <div className="text-center py-4">
+              <Shield className="w-16 h-16 mx-auto text-green-500 mb-2" />
+              <p className={`font-medium ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                {t.alertSent}
+              </p>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}

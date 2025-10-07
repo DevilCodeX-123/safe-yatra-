@@ -1,0 +1,206 @@
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { createPageUrl } from "@/utils";
+import { User } from "@/entities/User";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card } from "@/components/ui/card";
+import { UserCircle, Home, Briefcase, Save } from "lucide-react";
+
+const translations = {
+  hindi: {
+    title: "अपनी प्रोफ़ाइल सेटअप करें",
+    name: "नाम",
+    age: "उम्र",
+    phone: "फ़ोन नंबर",
+    home: "घर का पता",
+    work: "कार्यालय का पता",
+    save: "सहेजें और जारी रखें"
+  },
+  english: {
+    title: "Setup Your Profile",
+    name: "Name",
+    age: "Age",
+    phone: "Phone Number",
+    home: "Home Address",
+    work: "Work Address",
+    save: "Save & Continue"
+  },
+  marathi: {
+    title: "तुमची प्रोफाइल सेट करा",
+    name: "नाव",
+    age: "वय",
+    phone: "फोन नंबर",
+    home: "घराचा पत्ता",
+    work: "कार्यालयाचा पत्ता",
+    save: "जतन करा आणि सुरू ठेवा"
+  },
+  bengali: {
+    title: "আপনার প্রোফাইল সেটআপ করুন",
+    name: "নাম",
+    age: "বয়স",
+    phone: "ফোন নম্বর",
+    home: "বাড়ির ঠিকানা",
+    work: "কাজের ঠিকানা",
+    save: "সংরক্ষণ করুন এবং চালিয়ে যান"
+  },
+  tamil: {
+    title: "உங்கள் சுயவிவரத்தை அமைக்கவும்",
+    name: "பெயர்",
+    age: "வயது",
+    phone: "தொலைபேசி எண்",
+    home: "வீட்டு முகவரி",
+    work: "அலுவலக முகவரி",
+    save: "சேமிக்கவும் & தொடரவும்"
+  }
+};
+
+export default function ProfileSetup() {
+  const [user, setUser] = useState(null);
+  const [formData, setFormData] = useState({
+    full_name: "",
+    age: "",
+    phone: "",
+    home_location: "",
+    work_location: ""
+  });
+  const [isLoading, setIsLoading] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    loadUser();
+  }, []);
+
+  const loadUser = async () => {
+    try {
+      const userData = await User.me();
+      setUser(userData);
+      setDarkMode(userData.dark_mode || false);
+      setFormData({
+        full_name: userData.full_name || "",
+        age: userData.age || "",
+        phone: userData.phone || "",
+        home_location: userData.home_location || "",
+        work_location: userData.work_location || ""
+      });
+    } catch (error) {
+      console.log("Loading user data");
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    try {
+      await User.updateMyUserData({
+        ...formData,
+        age: parseInt(formData.age),
+        profile_completed: true
+      });
+      navigate(createPageUrl("Home"));
+    } catch (error) {
+      console.error("Error saving profile:", error);
+    }
+    setIsLoading(false);
+  };
+
+  const lang = user?.preferred_language || "hindi";
+  const t = translations[lang];
+
+  return (
+    <div className={`min-h-screen py-8 px-4 ${darkMode ? 'bg-black' : 'bg-gray-50'}`}>
+      <div className="max-w-2xl mx-auto">
+        <Card className={`p-8 ${darkMode ? 'bg-gray-900 border-gray-800' : 'bg-white'}`}>
+          <div className="flex items-center gap-3 mb-8">
+            <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+              darkMode ? 'bg-blue-600' : 'bg-blue-500'
+            }`}>
+              <UserCircle className="w-7 h-7 text-white" />
+            </div>
+            <h1 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+              {t.title}
+            </h1>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div>
+              <Label className={darkMode ? 'text-gray-300' : ''}>{t.name}</Label>
+              <Input
+                value={formData.full_name}
+                onChange={(e) => setFormData({...formData, full_name: e.target.value})}
+                required
+                className={`mt-1 h-11 ${darkMode ? 'bg-gray-800 border-gray-700 text-white' : ''}`}
+              />
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-6">
+              <div>
+                <Label className={darkMode ? 'text-gray-300' : ''}>{t.age}</Label>
+                <Input
+                  type="number"
+                  value={formData.age}
+                  onChange={(e) => setFormData({...formData, age: e.target.value})}
+                  required
+                  className={`mt-1 h-11 ${darkMode ? 'bg-gray-800 border-gray-700 text-white' : ''}`}
+                />
+              </div>
+
+              <div>
+                <Label className={darkMode ? 'text-gray-300' : ''}>{t.phone}</Label>
+                <Input
+                  type="tel"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                  required
+                  className={`mt-1 h-11 ${darkMode ? 'bg-gray-800 border-gray-700 text-white' : ''}`}
+                />
+              </div>
+            </div>
+
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <Home className={`w-4 h-4 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`} />
+                <Label className={darkMode ? 'text-gray-300' : ''}>{t.home}</Label>
+              </div>
+              <Input
+                value={formData.home_location}
+                onChange={(e) => setFormData({...formData, home_location: e.target.value})}
+                required
+                className={`mt-1 h-11 ${darkMode ? 'bg-gray-800 border-gray-700 text-white' : ''}`}
+              />
+            </div>
+
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <Briefcase className={`w-4 h-4 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`} />
+                <Label className={darkMode ? 'text-gray-300' : ''}>{t.work}</Label>
+              </div>
+              <Input
+                value={formData.work_location}
+                onChange={(e) => setFormData({...formData, work_location: e.target.value})}
+                required
+                className={`mt-1 h-11 ${darkMode ? 'bg-gray-800 border-gray-700 text-white' : ''}`}
+              />
+            </div>
+
+            <Button
+              type="submit"
+              disabled={isLoading}
+              className={`w-full h-12 text-base font-medium ${
+                darkMode 
+                  ? 'bg-blue-600 hover:bg-blue-700' 
+                  : 'bg-gradient-to-r from-blue-500 to-green-500 hover:from-blue-600 hover:to-green-600'
+              }`}
+            >
+              <Save className="w-5 h-5 mr-2" />
+              {isLoading ? "Saving..." : t.save}
+            </Button>
+          </form>
+        </Card>
+      </div>
+    </div>
+  );
+}

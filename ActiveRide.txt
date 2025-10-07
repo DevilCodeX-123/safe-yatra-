@@ -1,0 +1,208 @@
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { createPageUrl } from "@/utils";
+import { User } from "@/entities/User";
+import { Ride } from "@/entities/Ride";
+import { InvokeLLM } from "@/integrations/Core";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { MapPin, AlertCircle } from "lucide-react";
+import { motion } from "framer-motion";
+
+import MapSimulation from "../components/ride/MapSimulation";
+import SOSButton from "../components/ride/SOSButton";
+import TicketCard from "../components/ride/TicketCard";
+import PollButton from "../components/ride/PollButton";
+
+const translations = {
+  hindi: {
+    yourRoute: "आपका मार्ग",
+    loading: "मार्ग की गणना हो रही है..."
+  },
+  english: {
+    yourRoute: "Your Route",
+    loading: "Calculating route..."
+  },
+  marathi: {
+    yourRoute: "तुमचा मार्ग",
+    loading: "मार्ग मोजत आहे..."
+  },
+  bengali: {
+    yourRoute: "আপনার রুট",
+    loading: "রুট গণনা করা হচ্ছে..."
+  },
+  tamil: {
+    yourRoute: "உங்கள் வழி",
+    loading: "வழி கணக்கிடப்படுகிறது..."
+  }
+};
+
+export default function ActiveRide() {
+  const [user, setUser] = useState(null);
+  const [ride, setRide] = useState(null);
+  const [routeDetails, setRouteDetails] = useState(null);
+  const [darkMode, setDarkMode] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    loadRideData();
+  }, []);
+
+  const loadRideData = async () => {
+    try {
+      const userData = await User.me();
+      setUser(userData);
+      setDarkMode(userData.dark_mode || false);
+
+      const params = new URLSearchParams(window.location.search);
+      const rideId = params.get("rideId");
+      
+      if (!rideId) {
+        navigate(createPageUrl("Home"));
+        return;
+      }
+
+      const rideData = await Ride.filter({ id: rideId });
+      if (rideData.length === 0) {
+        navigate(createPageUrl("Home"));
+        return;
+      }
+
+      const currentRide = rideData[0];
+      setRide(currentRide);
+
+      await generateRouteDetails(currentRide, userData.preferred_language);
+    } catch (error) {
+      console.error("Error loading ride:", error);
+      navigate(createPageUrl("Home"));
+    }
+  };
+
+  const generateRouteDetails = async (rideData, language) => {
+    setIsLoading(true);
+    try {
+      const result = await InvokeLLM({
+        prompt: `Generate a multi-modal public transport journey from "${rideData.source}" to "${rideData.destination}" with route preference: ${rideData.route_preference}.
+
+Return JSON with:
+- segments: array of transport segments (bus/metro/walk), each with: mode, name, from, to, duration, price, distance
+- total_price: total cost in INR
+- total_duration: total time in minutes
+- total_distance: total distance in km
+- route_highlights: array of 2-3 key features based on preference (fastest/comfortable/fitness/quiet)
+
+Make it realistic for Indian cities. Use language: ${language}`,
+        response_json_schema: {
+          type: "object",
+          properties: {
+            segments: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  mode: { type: "string" },
+                  name: { type: "string" },
+                  from: { type: "string" },
+                  to: { type: "string" },
+                  duration: { type: "number" },
+                  price: { type: "number" },
+                  distance: { type: "number" }
+                }
+              }
+            },
+            total_price: { type: "number" },
+            total_duration: { type: "number" },
+            total_distance: { type: "number" },
+            route_highlights: {
+              type: "array",
+              items: { type: "string" }
+            }
+          }
+        }
+      });
+
+      setRouteDetails(result);
+      await Ride.update(rideData.id, {
+        route_details: result,
+        ticket_price: result.total_price,
+        status: "active"
+      });
+    } catch (error) {
+      console.error("Error generating route:", error);
+    }
+    setIsLoading(false);
+  };
+
+  const lang = user?.preferred_language || "hindi";
+  const t = translations[lang];
+
+  if (!ride || !user) {
+    return (
+      <div className={`min-h-screen flex items-center justify-center ${darkMode ? 'bg-black' : 'bg-gray-50'}`}>
+        <Skeleton className="h-64 w-64" />
+      </div>
+    );
+  }
+
+  return (
+    <div className={`min-h-screen ${darkMode ? 'bg-black' : 'bg-gray-50'}`}>
+      <div className="relative h-[50vh]">
+        <MapSimulation 
+          source={ride.source}
+          destination={ride.destination}
+          darkMode={darkMode}
+        />
+        <SOSButton rideId={ride.id} darkMode={darkMode} lang={lang} />
+      </div>
+
+      <div className={`px-4 py-6 ${darkMode ? 'bg-black' : 'bg-gray-50'}`}>
+        <div className="max-w-2xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h2 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                {t.yourRoute}
+              </h2>
+              <PollButton rideId={ride.id} darkMode={darkMode} lang={lang} />
+            </div>
+
+            {isLoading ? (
+              <Card className={`p-8 text-center ${darkMode ? 'bg-gray-900 border-gray-800' : ''}`}>
+                <div className="animate-spin w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full mx-auto mb-4" />
+                <p className={darkMode ? 'text-gray-400' : 'text-gray-600'}>{t.loading}</p>
+              </Card>
+            ) : routeDetails ? (
+              <div className="space-y-4">
+                <TicketCard 
+                  routeDetails={routeDetails}
+                  darkMode={darkMode}
+                  lang={lang}
+                />
+
+                <Card className={`p-6 ${darkMode ? 'bg-gray-900 border-gray-800' : ''}`}>
+                  <h3 className={`font-semibold mb-3 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                    Route Highlights
+                  </h3>
+                  <div className="space-y-2">
+                    {routeDetails.route_highlights?.map((highlight, idx) => (
+                      <div key={idx} className="flex items-start gap-2">
+                        <AlertCircle className={`w-4 h-4 mt-0.5 ${darkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+                        <p className={`text-sm ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
+                          {highlight}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              </div>
+            ) : null}
+          </motion.div>
+        </div>
+      </div>
+    </div>
+  );
+}
